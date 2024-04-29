@@ -1,42 +1,39 @@
-import github.com.wildchild04.http.message.Message;
+import github.com.wildchild04.http.*;
+import github.com.wildchild04.http.message.Request;
+import github.com.wildchild04.http.message.Response;
+import github.com.wildchild04.http.routing.Handler;
+import github.com.wildchild04.http.routing.Router;
 
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-
-import static github.com.wildchild04.http.message.HttpEncoder.encodeString;
+import java.util.Collections;
+import java.util.Map;
 
 public class App {
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
-
-        // Uncomment this block to pass the first stage
-        ServerSocket serverSocket = null;
-        Socket clientSocket = null;
-
         try {
-            serverSocket = new ServerSocket(4221);
-            serverSocket.setReuseAddress(true);
-            clientSocket = serverSocket.accept(); // Wait for connection from client.
-            System.out.println("accepted new connection");
-            var input = clientSocket.getInputStream();
-            var incomingData = input.readNBytes(input.available());
-            var dataStrings = new String(incomingData).split("\\r\\n");
-            var requestInfo = dataStrings[0];
-            var requestInfoStrings = requestInfo.split(" ");
-            Message message;
-            if (requestInfoStrings[1].equals("/")) {
-                message = new Message(encodeString("HTTP/1.1 200 OK"), encodeString(""), new byte[]{});
-            } else {
-                message = new Message(encodeString("HTTP/1.1 404 OK"), encodeString(""), new byte[]{});
-            }
-            clientSocket.getOutputStream().write(message.toBytes());
-            clientSocket.getOutputStream().flush();
-            clientSocket.getOutputStream().close();
-            clientSocket.close();
+            Router router = new Router();
+            router.registerHandler("/echo/{string}", request -> {
+                String body = request.values().get("string");
+                Map<String, String> headers = Map.of(
+                        "Content-Type", "text/plain",
+                        "Content-Length", Integer.toString(body.length())
+                );
+                return new Response(Version.HTTP11, Status.OK, headers, body.getBytes());
+            });
+            router.registerHandler("/", new Handler() {
+                @Override
+                public Response handle(Request request) {
+                    return new Response(Version.HTTP11, Status.OK, Collections.emptyMap(), new byte[]{});
+                }
+            });
+
+            Server server = new Server(4221, router);
+            server.start();
         } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
+            throw new RuntimeException(e);
         }
+
     }
 }
