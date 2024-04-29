@@ -22,6 +22,17 @@ public class App {
                 );
                 return new Response(Version.HTTP11, Status.OK, headers, body.getBytes());
             });
+            router.registerHandler("/user-agent", new Handler() {
+                @Override
+                public Response handle(Request request) {
+                    var agent = request.headers().get("User-Agent");
+                    var headers = Map.of(
+                            "Content-Type", "text/plain",
+                            "Content-Length" ,Integer.toString(agent.length())
+                    );
+                    return new Response(Version.HTTP11, Status.OK, headers, agent.getBytes());
+                }
+            });
             router.registerHandler("/", new Handler() {
                 @Override
                 public Response handle(Request request) {
