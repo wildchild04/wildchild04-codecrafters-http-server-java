@@ -7,15 +7,19 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
 
+    private static final int THREAD_POOL_SIZE = 50;
     private final ServerSocket serverSocket;
     private final Router router;
+    private final ExecutorService executor;
 
     public Server(int port, Router router) throws IOException {
         serverSocket = new ServerSocket(port);
+        executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.router = router;
         serverSocket.setReuseAddress(true);
     }
@@ -25,7 +29,7 @@ public class Server {
             try {
                 System.out.println("accepted new connection");
                 var clientSocket = serverSocket.accept(); // Wait for connection from client.
-                CompletableFuture.runAsync(() -> handleConn(clientSocket));
+                executor.execute(() -> handleConn(clientSocket));
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Error: " + e.getMessage());
@@ -39,9 +43,18 @@ public class Server {
             var input = socket.getInputStream();
             var incomingData = input.readNBytes(input.available());
             var dataStrings = new String(incomingData).split("\\r\\n");
+            if (dataStrings.length == 1 && dataStrings[0].isEmpty()) {
+                dataStrings = new String[]{"GET / HTTP/1.1"};
+            }
             var requestInfo = dataStrings[0];
             var requestInfoStrings = requestInfo.split(" ");
-            var requestMethod = Method.valueOf(requestInfoStrings[0]);
+            Method requestMethod;
+            try {
+                requestMethod = Method.valueOf(requestInfoStrings[0]);
+            } catch (Exception e) {
+                System.out.printf("Unrecognized method: %s\n", requestInfoStrings[0]);
+                requestMethod = Method.GET;
+            }
             var headers = new HashMap<String, String>();
             for (int i = 1; i < dataStrings.length; i++) {
                 var header = dataStrings[i].split(":");
@@ -79,7 +92,5 @@ public class Server {
                 throw new RuntimeException(e);
             }
         }
-
-
     }
 }
