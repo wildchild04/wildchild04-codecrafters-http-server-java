@@ -43,28 +43,40 @@ public class App {
                 }
             });
 
+
             router.registerHandler("/files/{file-name}", new Handler() {
                 @Override
                 public Response handle(Request request) {
                     var baseDir = CONFIG.get(ServerConfig.DIR.name());
-                    File f = new File(baseDir+"/"+request.values().get("file-name"));
-                    if (f.exists()) {
-                        try ( FileInputStream fileReader = new FileInputStream(f)){
-                            var fileBytes = new byte[(int)f.length()];
-                            fileReader.read(fileBytes);
-                            var headers = Map.of(
-                                    "Content-Type", "application/octet-stream",
-                                    "Content-Length" ,Integer.toString(fileBytes.length)
-                            );
-                            return new Response(Version.HTTP11, Status.OK, headers, fileBytes);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                    var filePath = baseDir+"/"+request.values().get("file-name");
+                    if (Method.GET == request.method()) {
+                        File f = new File(filePath);
+                        if (f.exists()) {
+                            try ( FileInputStream fileReader = new FileInputStream(f)){
+                                var fileBytes = new byte[(int)f.length()];
+                                fileReader.read(fileBytes);
+                                var headers = Map.of(
+                                        "Content-Type", "application/octet-stream",
+                                        "Content-Length" ,Integer.toString(fileBytes.length)
+                                );
+                                return new Response(Version.HTTP11, Status.OK, headers, fileBytes);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+
+                        return new Response(Version.HTTP11, Status.NOT_FOUND, Collections.emptyMap(), new byte[]{});
+                    }
+                    if (Method.POST == request.method()) {
+                        try (FileOutputStream fileWriter = new FileOutputStream(filePath);){
+                            fileWriter.write(request.body());
+                            return new Response(Version.HTTP11, Status.CREATED, Collections.emptyMap(), new byte[]{});
+                        } catch (IOException e) {
+                            System.out.println(e);
+                            return new Response(Version.HTTP11, Status.SERVER_ERR, Collections.emptyMap(), new byte[]{});
                         }
                     }
-
-
-
-                    return new Response(Version.HTTP11, Status.NOT_FOUND, Collections.emptyMap(), new byte[]{});
+                    return new Response(Version.HTTP11, Status.METHOD_NOT_ALLOWED, Collections.emptyMap(), new byte[]{});
                 }
             });
             router.registerHandler("/", new Handler() {
@@ -79,6 +91,5 @@ public class App {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 }

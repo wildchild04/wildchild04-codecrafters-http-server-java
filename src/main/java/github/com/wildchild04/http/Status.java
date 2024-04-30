@@ -2,7 +2,10 @@ package github.com.wildchild04.http;
 
 public enum Status {
     OK(200, "OK"),
-    NOT_FOUND(404, " Not Found");
+    CREATED(201, "Created"),
+    NOT_FOUND(404, "Not Found"),
+    METHOD_NOT_ALLOWED(405, "Method not allowed"),
+    SERVER_ERR(500, "Server error");
 
     private final int value;
     private final String message;

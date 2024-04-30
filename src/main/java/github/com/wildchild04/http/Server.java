@@ -57,15 +57,19 @@ public class Server {
             }
             var headers = new HashMap<String, String>();
             for (int i = 1; i < dataStrings.length; i++) {
-                var header = dataStrings[i].split(":");
-                if (header.length == 0) {
+                var firstColonIndex = dataStrings[i].indexOf(':');
+                if (firstColonIndex == -1) {
                     break;
                 }
+                var header = new String[]{
+                        dataStrings[i].substring(0,firstColonIndex),
+                        dataStrings[i].substring(firstColonIndex+1, dataStrings[i].length()) };
+
                 headers.put(header[0].trim(), header[1].trim());
             }
             byte[] body;
-            if (requestMethod != Method.GET) {
-                body = new byte[]{};
+            if (requestMethod == Method.POST) {
+                body = dataStrings[dataStrings.length-1].getBytes();
             } else {
                 body = new byte[]{};
             }
